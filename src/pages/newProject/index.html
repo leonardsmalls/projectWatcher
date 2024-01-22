@@ -2,10 +2,63 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Hello World!</title>
+    <title>Project Viewer - New Project</title>
     <link rel="stylesheet" href="../../css/globals.css" />
     <link rel="stylesheet" href="./index.css" />
     <script src="../../../node_modules/dxf/dist/dxf.js"></script>
+    <style>
+      datalist#process-list {
+        top: 290px;
+        width: 444px;
+      }
+      datalist div {
+        border-bottom: 1px solid rgba(255,255,255,0.125);
+        color: #fff;
+      }
+      datalist div p {
+        display: flex;
+        cursor: pointer;
+      }
+      datalist div p input {
+        display: flex;
+        box-shadow: none;
+        width: 30px;
+      }
+      .process-selection-badge-list {
+        display: inline-flex;
+        position: relative;
+        left: 50px;
+        max-width: 444px;
+        flex-wrap: wrap;
+      }
+      .process-badge {
+        display: flex;
+        align-items: center;
+        background-color: #1fabe2;
+        border-radius: 5px;
+        padding: 5px;
+        margin: 5px;
+        height: 20px;
+        box-shadow: 3px 3px 3px rgba(0,0,0,0.5)
+      }
+      .process-badge-label {
+        padding-right: 5px;
+        font-family: 'Roboto', sans-serif;
+      }
+      .remove-process-badge {
+        background-color: #4b4b4b;
+        border-radius: 50%;
+        border: none;
+        color: white;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        margin-right: 10px;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+      }
+    </style>
   </head>
   <body>
     <main>
@@ -44,6 +97,54 @@
                 </datalist>
               </div>
               <hr/>
+              <div class="process-name-input input-block">
+                <label for="process_name">Process Name</label>
+                <input id="process-name" name="process_name" required value="" list="" placeholder="Processes" autocomplete="off" role="combobox" />
+                <datalist id="process-list" role="listbox">
+                  <div>
+                    <p>
+                      <input type="checkbox" id="waterjet" name="waterjet" value="Waterjet">Waterjet
+                    </p>
+                  </div>
+                  <div>
+                    <p>
+                      <input type="checkbox" id="wireEDM" name="wireEDM" value="Wire EDM">Wire EDM
+                    </p>
+                  </div>
+                  <div>
+                    <p>
+                      <input type="checkbox" id="milling" name="milling" value="Milling">Milling
+                    </p>
+                  </div>
+                  <div>
+                    <p>
+                      <input type="checkbox" id="turning" name="turning" value="Turning">Turning
+                    </p>
+                  </div>
+                  <div>
+                    <p>
+                      <input type="checkbox" id="sinkerEDM" name="sinkerEDM" value="Sinker EDM">Sinker EDM
+                    </p>
+                  </div>
+                  <div>
+                    <p>
+                      <input type="checkbox" id="welding" name="welding" value="Welding">Welding
+                    </p>
+                  </div>
+                  <div>
+                    <p>
+                      <input type="checkbox" id="grinder" name="grinder" value="Grinder">Grinder
+                    </p>
+                  </div>
+                  <div>
+                    <p>
+                      <input type="checkbox" id="paint" name="paint" value="Paint">Paint
+                    </p>
+                  </div>
+                </datalist>
+              </div>
+              <div class="process-selection-badge-list"></div>
+              <hr/>
               <div class="material-input input-block">
                 <label for="material">Material</label>
                 <input id="material" name="material" required value="" list="" placeholder="Material" autocomplete="off" role="combobox" />
@@ -80,12 +181,23 @@
                 <input type="file" id="files" name="files" multiple value=""/>
               </div>
 
-          
+              <div class="priority-input input-block">
+                <div class="set-priority">
+                  <label for="priority">Priority</label>
+                  <input id="priority" name="priority" required value="" list="" placeholder="Priority" autocomplete="off" role="combobox" />
+                  <datalist id="priority-list" role="listbox">
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Rush">Rush</option>
+                  </datalist>
+                </div>
+              </div>        
 
-                <button class="review-project">Review Project</button>
+              <button class="review-project">Review Project</button>
 
-                <button class="submit-project hidden">Submit Project</button>
-              </div>
+              <button class="submit-project hidden">Submit Project</button>
+            </div>
           </form>
             
           <div class="file-preview">
@@ -105,8 +217,6 @@
       import * as dbUtils from '../../js/db-utils.js';
       import * as dxfHandler from '../../js/dxf-handler.js';
 
-      
-
       pageUtils.menuNavigation();
       pageUtils.pageChangeFade();
 
@@ -124,6 +234,81 @@
       const filePreviewPane = svgContainer.closest('.file-preview');
       const svgConvertedContainer = document.getElementById('svg-converted');
       const fileInput = document.getElementById('files');
+      const processesInputField = document.getElementById('process-name');
+      const processSelectionMenu = document.querySelector('#process-name+datalist');
+      const processInputs = processSelectionMenu.querySelectorAll('div p input');
+      const processInputsContainer = processSelectionMenu.querySelectorAll('div p');
+      const processSelectionBadgeList = document.querySelector('.process-selection-badge-list');
+
+      processInputsContainer.forEach((container) => {
+        container.addEventListener('click', (e) => {
+          e.target.querySelector('input').click();
+        });
+      });
+
+      const makeProcessBadge = (processName) => {
+        const processBadge = document.createElement('div');
+        const removeButton = document.createElement('button');
+        const processBadgeLabel = document.createElement('p');
+        removeButton.classList.add('remove-process-badge');
+        removeButton.innerHTML = 'X';
+
+        processBadge.appendChild(removeButton);
+
+        removeButton.addEventListener('click', (e) => {
+          if (e.target.classList.contains('remove-process-badge')) {
+            removeProcessBadge(processBadge);
+          }
+        });
+
+        processBadgeLabel.classList.add('process-badge-label');
+        processBadgeLabel.innerHTML = processName;
+        processBadge.appendChild(processBadgeLabel);
+
+        processBadge.classList.add('process-badge');
+        
+        return processBadge;
+      }
+
+      const removeProcessBadge = (processBadge) => {
+        const processBadgeLabel = processBadge.querySelector('.process-badge-label');
+        processInputs.forEach((input) => {
+          if (input.value == processBadgeLabel.innerHTML) {
+            input.checked = false;
+          }
+        });
+        processBadge.remove();
+        processesInputFieldValue();
+      }
+
+      const processesInputFieldValue = () => {
+        const processBadges = processSelectionBadgeList.querySelectorAll('.process-badge');
+        let processInputFieldValue = '';
+        processBadges.forEach((badge) => {
+          const processBadgeLabel = badge.querySelector('.process-badge-label');
+          processInputFieldValue += processBadgeLabel.innerHTML + ', ';
+        });
+        processesInputField.value = processInputFieldValue.slice(0, -2);
+      }
+
+      processInputs.forEach((input) => {
+        input.addEventListener('click', (e) => {
+          if (e.target.checked) {
+            processSelectionBadgeList.appendChild(makeProcessBadge(e.target.value));
+            processesInputFieldValue();
+          } else {
+            const processBadges = processSelectionBadgeList.querySelectorAll('.process-badge');
+            processBadges.forEach((badge) => {
+              const processBadgeLabel = badge.querySelector('.process-badge-label');
+              if (processBadgeLabel.innerHTML == e.target.value) {
+                removeProcessBadge(badge);
+              }
+            });
+          }
+          processesInputField.focus();
+        });
+      });
+
       const filesArr = [];
 
       let currentFocus = -1;
@@ -132,7 +317,7 @@
       inputSelectCombo.forEach((input) => {
         const datalist = input.nextElementSibling;
 
-        input.addEventListener('focus', () => {
+        input.addEventListener('focus', (e) => {
           datalist.style.display = 'block';
         });
 
@@ -207,7 +392,6 @@
 
       theForm.addEventListener('submit', (ev) => {
         ev.preventDefault();
-
       });
 
       const showReviewModal = (projectData) => {
@@ -234,7 +418,22 @@
               <div class="modal-content-row-label">Comments</div>
               <div class="modal-content-row-value">${projectData['comments']}</div>
               <div class="modal-content-row-label">Files</div>
-              <div class="modal-content-row-value">${projectData['files']}</div>
+              <div class="modal-content-row-value">
+                <p>${
+                    (function() {
+                      console.log(projectData)
+                      const projectFiles = projectData['files'];
+                      let projectFileSpans = '';
+                      console.log(projectFiles[0])
+                      projectFiles.forEach((file, index) => {
+                        projectFileSpans += '<span class="project-file" data-file-name="' + file.name + '">' + file.name + '.' + file.type + '</span><br/>'
+                      });
+                      return projectFileSpans;
+                    })()
+                  }</p>
+              </div>
+              <div class="modal-content-row-label">Priority</div>
+              <div class="modal-content-row-value">${projectData['priority']}</div>
             </div>
             <div class="modal-footer">
               <button class="modal-submit">Submit Project</button>
@@ -272,6 +471,10 @@
             projectData[input.name] = input.value;
           }
 
+          if (input.name="priority") {
+            console.log(input.value);
+          }
+
           if (input.validity.valid) {
             validCount++;
           } else {
@@ -291,11 +494,13 @@
         });
 
         projectData['files'] = filesArr;
+
         fileHandler.createOrRelocateDirectory('dump', projectData['files']);
 
         projectData['comments'] = textareaValue;
         projectData['cut_time'] = 0;
         projectData['labor_time'] = 0;
+        projectData['pending_ranking'] = 0;
         projectData['date'] = dateString + ' @ ' + timeString;
         projectData['procedures'] = 'blank';
 
@@ -317,10 +522,12 @@
       submitProject.addEventListener('click', () => {
         const pendingProjectData = window.localStorage.getItem('pendingProjectData');
         const specifiedDriveLetter = fileHandler.getSpecifiedDriveLetter();
+        const JSONppd = JSON.parse(pendingProjectData);
         //fileHandler.addProjectToLocal(JSON.parse(pendingProjectData));
         
         //writeToFile(pendingProjectData, 'pending');
         console.log(pendingProjectData);
+        console.log(JSONppd);
 
         //window.localStorage.removeItem('pendingProjectData');
 
@@ -333,10 +540,28 @@
 
         console.log('data written to file');
 
+        const projectFiles = JSONppd['files'];
+        let projectFileSpans = '';
+
+        projectFiles.forEach((file, index) => {
+          projectFileSpans += file.name + '.' + file.type
+          if (projectFiles.length != index + 1) {
+            projectFileSpans += ','
+          }
+        });
+        console.log(projectFileSpans);
+
+        JSONppd['fileNamesList'] = projectFileSpans;
+
+        const strungOutJSONppd = JSON.stringify(JSONppd);
+
+        console.log(strungOutJSONppd);
+
         //dbUtils.dbInteractionCall('create', 'pending', pendingProjectData);
+        dbUtils.dbInteractionCall('create', 'pending', strungOutJSONppd);                  
 
         console.log(JSON.parse(pendingProjectData));
-        const JSONppd = JSON.parse(pendingProjectData);
+        
 
         for (let item in JSONppd) {
           //console.log(JSONppd);
@@ -347,7 +572,8 @@
           }
         }
 
-        fileHandler.createOrRelocateDirectory('create', JSON.parse(pendingProjectData));
+        //fileHandler.createOrRelocateDirectory('create', JSON.parse(pendingProjectData));
+        fileHandler.createOrRelocateDirectory('create', JSON.parse(strungOutJSONppd));
 
         console.log('data written to db');
       });
@@ -357,7 +583,7 @@
         const imgName = document.createElement('p');
         const img = document.createElement('img');
         const viewInProgramButton = document.createElement('button');
-        viewInProgramButton.innerHTML = 'View in Program';
+        viewInProgramButton.innerHTML = 'Open File';
         viewInProgramButton.classList.add('view-in-program');
 
         imgWrapper.classList.add('img-wrapper');
@@ -393,7 +619,7 @@
         const PDFName = document.createElement('p');
         PDFName.innerHTML = pdfFileName;
         const viewInProgramButton = document.createElement('button');
-        viewInProgramButton.innerHTML = 'View in Program';
+        viewInProgramButton.innerHTML = 'Open File';
         viewInProgramButton.classList.add('view-in-program');
 
         PDFWrapper.appendChild(PDFName);
@@ -414,7 +640,7 @@
         convertedDXFtoSVGDiv.classList.add('dxf-wrapper');
 
         const viewInProgramButton = document.createElement('button');
-        viewInProgramButton.innerHTML = 'View in Program';
+        viewInProgramButton.innerHTML = 'Open in OMAX';
         viewInProgramButton.classList.add('view-in-program');
 
         const dxfName = document.createElement('p');
